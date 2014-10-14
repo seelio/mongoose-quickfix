@@ -1,10 +1,9 @@
 Fixture = require "../"
 
-async = require "async"
 expect = require "expect.js"
 mongoose = require "mongoose"
 
-# This is the actual test
+
 describe "Person model", ->
   before (done) ->
     Fixture.use([])
