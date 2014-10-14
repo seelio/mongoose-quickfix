@@ -224,15 +224,7 @@ Fixture::selectivelyRestoreDatabase = (done) ->
     (next) =>
       dataitem = @_datacenter.pop()
 
-      switch dataitem.method
-        when "insert"
-          return @revert.restoreInsert(dataitem, next)
-        when "update"
-          return @revert.restoreUpdate(dataitem, next)
-        when "remove"
-          return @revert.restoreRemove(dataitem, next)
-        when "findAndModify"
-          return @revert.restoreFindAndModify(dataitem, next)
+      @revert[dataitem.method](dataitem, next)
     ,
       done
 

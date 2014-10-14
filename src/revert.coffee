@@ -21,8 +21,26 @@ Revert::unremoveDocById = (findparam, collection, done) ->
 
   collection.secureChannel.insert doc, done
 
+    
+Revert::uninsertDoc = (findparam, collection, done) ->
+  collection.secureChannel.remove { _id: findparam._id }, done
 
-Revert::restoreRemove = (dataitem, done) ->
+
+Revert::unupdateDocById = (findparam, collection, done) ->
+  id             = String(findparam._id)
+  collectionName = collection.name
+  doc            = @documents[collectionName][id]
+
+  collection.secureChannel.update { _id: findparam._id }, doc, done
+
+
+Revert::insert = (dataitem, done) ->
+  collection = dataitem.collection
+  findparams = dataitem.args["0"]
+  @uninsertDoc(findparams, collection, done)
+
+
+Revert::remove = (dataitem, done) ->
   collection = dataitem.collection
   findparams = dataitem.args["0"]
 
@@ -41,26 +59,8 @@ Revert::restoreRemove = (dataitem, done) ->
   else
     unDirtyifyCollection(collection, done)
 
-    
-Revert::uninsertDoc = (findparam, collection, done) ->
-  collection.secureChannel.remove { _id: findparam._id }, done
 
-
-Revert::restoreInsert = (dataitem, done) ->
-  collection = dataitem.collection
-  findparams = dataitem.args["0"]
-  @uninsertDoc(findparams, collection, done)
-
-
-Revert::unupdateDocById = (findparam, collection, done) ->
-  id             = String(findparam._id)
-  collectionName = collection.name
-  doc            = @documents[collectionName][id]
-
-  collection.secureChannel.update { _id: findparam._id }, doc, done
-
-
-Revert::restoreUpdate = (dataitem, done) ->
+Revert::update = (dataitem, done) ->
   collection = dataitem.collection
   findparams = dataitem.args["0"]
 
@@ -80,7 +80,7 @@ Revert::restoreUpdate = (dataitem, done) ->
     unDirtyifyCollection(collection, done)
 
 
-Revert::restoreFindAndModify = (dataitem, done) ->
+Revert::findAndModify = (dataitem, done) ->
   collection = dataitem.collection
   findparams = dataitem.args["0"]
   remove     = dataitem.args["3"].remove
