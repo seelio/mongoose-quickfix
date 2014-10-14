@@ -1,18 +1,21 @@
 async = require 'async'
 fs = require 'fs'
 util = require './util'
-# path = require 'path'
-
+Revert = require "./revert"
 
 Fixture = ->
   @connections = []
   @collections = {}
   @documents   = {}
-  @_fixtures   = []
-  @_location   = null
-  @_datacenter = []
 
+  @_fixtures   = []
+  @_datacenter = []
+  @_location   = null
   @_superDirty = true
+
+  @revert = new Revert(@collections, @documents)
+
+  @
 
 # Internal: Adds "wiretaps" to the connections to log modifications to the
 # database.
@@ -215,89 +218,6 @@ Fixture::destroyDatacenter = (done) ->
   done()
 
 
-Fixture::unDirtyifyCollection = (collection, done) ->
-  docs = @collections[collection.name]
-
-  collection.secureChannel.remove {}, (err) ->
-    collection.secureChannel.insert docs, done
-
-
-Fixture::unremoveDocById = (findparam, collection, done) ->
-  id             = String(findparam._id)
-  collectionName = collection.name
-  doc            = @documents[collectionName][id]
-
-  collection.secureChannel.insert doc, done
-
-
-Fixture::restoreRemove = (dataitem, done) ->
-  collection = dataitem.collection
-  findparams = dataitem.args["0"]
-
-  reinserts = null
-
-  if findparams._id?
-    if findparams._id['$in']?
-      reinserts = findparams._id['$in']
-    else
-      reinserts = [findparams]
-
-    async.each reinserts, (findparam, next) =>
-      @unremoveDocById findparam, collection, next
-    ,
-      done
-  else
-    unDirtyifyCollection(collection, done)
-    
-Fixture::uninsertDoc = (findparam, collection, done) ->
-  collection.secureChannel.remove { _id: findparam._id }, done
-
-
-Fixture::restoreInsert = (dataitem, done) ->
-  collection = dataitem.collection
-  findparams = dataitem.args["0"]
-  @uninsertDoc(findparams, collection, done)
-
-
-Fixture::unupdateDocById = (findparam, collection, done) ->
-  id             = String(findparam._id)
-  collectionName = collection.name
-  doc            = @documents[collectionName][id]
-
-  collection.secureChannel.update { _id: findparam._id }, doc, done
-
-Fixture::restoreUpdate = (dataitem, done) ->
-  collection = dataitem.collection
-  findparams = dataitem.args["0"]
-
-  reinserts = null
-
-  if findparams._id?
-    if findparams._id['$in']?
-      reinserts = findparams._id['$in']
-    else
-      reinserts = [findparams]
-
-    async.each reinserts, (findparam, next) =>
-      @unupdateDocById findparam, collection, next
-    ,
-      done
-  else
-    unDirtyifyCollection(collection, done)
-
-Fixture::restoreFindAndModify = (dataitem, done) ->
-  collection = dataitem.collection
-  findparams = dataitem.args["0"]
-  remove     = dataitem.args["3"].remove
-
-  if remove
-    @unremoveDocById(findparams, collection, done)
-  else
-    @unupdateDocById(findparams, collection, done)
-
-
-
-
 Fixture::selectivelyRestoreDatabase = (done) ->
   async.whilst () => @_datacenter.length > 0
     ,
@@ -306,13 +226,13 @@ Fixture::selectivelyRestoreDatabase = (done) ->
 
       switch dataitem.method
         when "insert"
-          return @restoreInsert(dataitem, next)
+          return @revert.restoreInsert(dataitem, next)
         when "update"
-          return @restoreUpdate(dataitem, next)
+          return @revert.restoreUpdate(dataitem, next)
         when "remove"
-          return @restoreRemove(dataitem, next)
+          return @revert.restoreRemove(dataitem, next)
         when "findAndModify"
-          return @restoreFindAndModify(dataitem, next)
+          return @revert.restoreFindAndModify(dataitem, next)
     ,
       done
 
