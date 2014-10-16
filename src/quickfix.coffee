@@ -132,8 +132,6 @@ Quickfix::ensureCollectionsExistInConnection = (done) ->
 
   async.each @connections,
     (conn, nextConn) =>
-      return nextConn() if conn.loadFixtures == false
-
       async.each collectionNames,
         (collectionName, nextCollection) =>
           conn.connection.collection(collectionName)
