@@ -224,7 +224,7 @@ Fixture::selectivelyRestoreDatabase = (done) ->
     (next) =>
       dataitem = @_datacenter.pop()
 
-      @revert[dataitem.method](dataitem, next)
+      @revert.handle(dataitem.method, dataitem, next)
     ,
       done
 

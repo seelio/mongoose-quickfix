@@ -7,88 +7,79 @@ Revert = (collections, documents) ->
   @
 
 
-Revert::unDirtyifyCollection = (collection, done) ->
+Revert::restoreCollection = (collection, done) ->
   docs = @collections[collection.name]
 
   collection.secureChannel.remove {}, (err) ->
     collection.secureChannel.insert docs, done
 
 
-Revert::unremoveDocById = (findparam, collection, done) ->
-  id             = String(findparam._id)
-  collectionName = collection.name
-  doc            = @documents[collectionName][id]
+Revert::unremoveDocById = (id, collection, done) ->
+  doc            = @documents[collection.name][String(id)]
 
   collection.secureChannel.insert doc, done
 
     
-Revert::uninsertDoc = (findparam, collection, done) ->
-  collection.secureChannel.remove { _id: findparam._id }, done
+Revert::uninsertDocById = (id, collection, done) ->
+  collection.secureChannel.remove { _id: id }, done
 
 
-Revert::unupdateDocById = (findparam, collection, done) ->
-  id             = String(findparam._id)
-  collectionName = collection.name
-  doc            = @documents[collectionName][id]
+Revert::unupdateDocById = (id, collection, done) ->
+  doc            = @documents[collection.name][String(id)]
 
-  collection.secureChannel.update { _id: findparam._id }, doc, done
+  collection.secureChannel.update { _id: id }, doc, done
 
 
-Revert::insert = (dataitem, done) ->
+Revert::insert = (id, collection, opts, done) ->
+  @uninsertDocById(id, collection, done)
+
+
+Revert::remove = (id, collection, opts, done) ->
+  @unremoveDocById id, collection, done
+
+
+Revert::update = (id, collection, opts, done) ->
+  @unupdateDocById id, collection, done
+
+
+Revert::findAndModify = (id, collection, opts, done) ->
+  if opts.remove
+    @unremoveDocById(id, collection, done)
+  else
+    @unupdateDocById(id, collection, done)
+
+
+Revert::revertTransaction = (method, dataitem, done) ->
   collection = dataitem.collection
   findparams = dataitem.args["0"]
-  @uninsertDoc(findparams, collection, done)
+  ids        = null
 
-
-Revert::remove = (dataitem, done) ->
-  collection = dataitem.collection
-  findparams = dataitem.args["0"]
-
-  reinserts = null
-
-  if findparams._id?
-    if findparams._id['$in']?
-      reinserts = findparams._id['$in']
+  ids =
+    if findparams?._id?['$in']?
+      findparams._id['$in']
     else
-      reinserts = [findparams]
+      [findparams._id]
 
-    async.each reinserts, (findparam, next) =>
-      @unremoveDocById findparam, collection, next
-    ,
-      done
-  else
-    unDirtyifyCollection(collection, done)
-
-
-Revert::update = (dataitem, done) ->
-  collection = dataitem.collection
-  findparams = dataitem.args["0"]
-
-  reinserts = null
-
-  if findparams._id?
-    if findparams._id['$in']?
-      reinserts = findparams._id['$in']
+  opts = 
+    if method == 'findAndModify'
+      { remove: dataitem.args["3"].remove }
     else
-      reinserts = [findparams]
+      {}
 
-    async.each reinserts, (findparam, next) =>
-      @unupdateDocById findparam, collection, next
-    ,
-      done
-  else
-    unDirtyifyCollection(collection, done)
+  async.eachSeries ids, (id, nextId) =>
+    @[method](id, collection, opts, nextId)
+  ,
+    done
 
 
-Revert::findAndModify = (dataitem, done) ->
+Revert::handle = (method, dataitem, done) ->
   collection = dataitem.collection
   findparams = dataitem.args["0"]
-  remove     = dataitem.args["3"].remove
 
-  if remove
-    @unremoveDocById(findparams, collection, done)
+  if findparams?._id?
+    return @revertTransaction(method, dataitem, done)
   else
-    @unupdateDocById(findparams, collection, done)
+    return @restoreCollection(collection, done)
 
 
 module.exports = Revert

@@ -46,6 +46,22 @@ describe "Person model", ->
       expect(elon.name).to.be("Elon Musk")
       done()
 
+  it "should delete multiple stuff", (done) ->
+    finds    = { _id: { $in: [ "000000000000000000000001", "000000000000000000000002" ] } }
+    opts     = { multi: true }
+
+    mongoose.models.Person.remove finds, (err, numAffected) ->
+      throw err if err
+      mongoose.models.Person.find {}, (err, people) ->
+        throw err if err
+        expect(people).to.have.length(2)
+        done()
+
+  it "should reset multiple deletion stuff", (done) ->
+    mongoose.models.Person.find {}, (err, people) ->
+      expect(people).to.have.length(4)
+      done()
+
   it "should insert stuff", (done) ->
     jaymes = new mongoose.models.Person({ name: 'Jaymes Young' });
     jaymes.save (err) ->
