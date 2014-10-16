@@ -3,7 +3,7 @@ fs = require 'fs'
 util = require './util'
 Revert = require "./revert"
 
-Fixture = ->
+Quickfix = ->
   @connections = []
   @collections = {}
   @documents   = {}
@@ -21,7 +21,7 @@ Fixture = ->
 # database.
 #
 # collection - a connection's collection
-Fixture::wiretap = (collection) ->
+Quickfix::wiretap = (collection) ->
   return if collection.secureChannel?
 
   collection.unmodifiedMethods = {}
@@ -46,7 +46,7 @@ Fixture::wiretap = (collection) ->
 # Internal: load fixtures from file and into @collection
 #
 # force - force reloading
-Fixture::loadFixturesIntoMemory = (force = false) ->
+Quickfix::loadFixturesIntoMemory = (force = false) ->
   if force || Object.keys(@collections).length == 0
     @_superDirty = true
 
@@ -71,7 +71,7 @@ Fixture::loadFixturesIntoMemory = (force = false) ->
 #
 # absFixturePath -
 # extension      -
-Fixture::findFixtures = (absFixturePath, extension) ->
+Quickfix::findFixtures = (absFixturePath, extension) ->
   return @_fixtures if @_fixtures.length > 0
 
   @_location = absFixturePath
@@ -97,7 +97,7 @@ Fixture::findFixtures = (absFixturePath, extension) ->
 # Raises error if connection is bad
 #
 # Returns nothing
-Fixture::setupConnection = (connection, load = true) ->
+Quickfix::setupConnection = (connection, load = true) ->
   @connections.push
     connection:   connection
     loadFixtures: !!load
@@ -106,14 +106,14 @@ Fixture::setupConnection = (connection, load = true) ->
 
 
 # Public: resets connections
-Fixture::resetConnections = ->
+Quickfix::resetConnections = ->
   @connections = []
 
 
 # Internal: Yields when all @connections are ready
 #
 # Returns nothing
-Fixture::ensureConnectionsReady = (done) ->
+Quickfix::ensureConnectionsReady = (done) ->
   async.each @connections,
     (conn, next) ->
       if conn.connection.readyState == 1
@@ -127,7 +127,7 @@ Fixture::ensureConnectionsReady = (done) ->
     () ->
       done()
 
-Fixture::ensureCollectionsExistInConnection = (done) ->
+Quickfix::ensureCollectionsExistInConnection = (done) ->
   collectionNames = Object.keys(@collections)
 
   async.each @connections,
@@ -143,7 +143,7 @@ Fixture::ensureCollectionsExistInConnection = (done) ->
   ,
     done
 
-Fixture::insertAllDataIntoDatabase = (done) ->
+Quickfix::insertAllDataIntoDatabase = (done) ->
   collectionNames = Object.keys(@collections)
 
   async.each @connections,
@@ -165,7 +165,7 @@ Fixture::insertAllDataIntoDatabase = (done) ->
       done()
 
 
-Fixture::destroyAllDataFromDatabase = (done) ->
+Quickfix::destroyAllDataFromDatabase = (done) ->
   collectionNames = Object.keys(@collections)
   @_superDirty = true
 
@@ -183,7 +183,7 @@ Fixture::destroyAllDataFromDatabase = (done) ->
     done
 
 
-Fixture::commenceMassSurveillance = (done) ->
+Quickfix::commenceMassSurveillance = (done) ->
   async.each @connections, (conn, nextConn) =>
     async.each Object.keys(conn.connection.collections), (collectionName, nextCollection) =>
       @wiretap(conn.connection.collection(collectionName))
@@ -196,8 +196,8 @@ Fixture::commenceMassSurveillance = (done) ->
 
 # Public: Ensures all connections are ready. Ensures fixtures are read.
 # Ensures collections are created.
-Fixture::ready = (done) ->
-  # throw new Error('Fixture::setupConnection asdf') if @connections.length == 0
+Quickfix::ready = (done) ->
+  # throw new Error('Quickfix::setupConnection asdf') if @connections.length == 0
   async.series [
     (next) =>
       @ensureConnectionsReady(next)
@@ -212,13 +212,13 @@ Fixture::ready = (done) ->
   ],
     done
 
-Fixture::destroyDatacenter = (done) ->
+Quickfix::destroyDatacenter = (done) ->
   while (@_datacenter.length > 0)
     @_datacenter.pop()
   done()
 
 
-Fixture::selectivelyRestoreDatabase = (done) ->
+Quickfix::selectivelyRestoreDatabase = (done) ->
   async.whilst () => @_datacenter.length > 0
     ,
     (next) =>
@@ -229,7 +229,7 @@ Fixture::selectivelyRestoreDatabase = (done) ->
       done
 
 
-Fixture::populate = (done) ->
+Quickfix::populate = (done) ->
   if @_superDirty
     async.series [
       (next) =>
@@ -250,15 +250,15 @@ Fixture::populate = (done) ->
     done()
 
 
-# Deprecated: Use Fixture::ready
-Fixture::initModels = (done) ->
-  # console.warn "DEPRECATED: Use `Fixture::ready`"
+# Deprecated: Use Quickfix::ready
+Quickfix::initModels = (done) ->
+  # console.warn "DEPRECATED: Use `Quickfix::ready`"
   @ready(done)
 
 
 # Deprecated: Specifies the models and fixtures to use and load.
-Fixture::use = (ignore) ->
+Quickfix::use = (ignore) ->
   # console.warn "DEPRECATED: This method doesn't do anything anymore"
   # do nothing
 
-module.exports = new Fixture
+module.exports = new Quickfix

@@ -1,5 +1,5 @@
 mongoose = require "mongoose"
-Fixture  = require "../../fixture"
+Quickfix  = require "../../"
 
-Fixture.setupConnection(mongoose.connections[0])
-Fixture.findFixtures(__dirname + "/../fixtures", ".js")
+Quickfix.setupConnection(mongoose.connections[0])
+Quickfix.findFixtures(__dirname + "/../fixtures", ".js")
