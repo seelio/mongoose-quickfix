@@ -1,1 +1,1 @@
-module.exports = require "./fixture"
+module.exports = require "./quickfix"

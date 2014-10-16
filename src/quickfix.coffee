@@ -1,24 +1,27 @@
 async = require 'async'
 fs = require 'fs'
 util = require './util'
-# path = require 'path'
+Revert = require "./revert"
 
+Quickfix = ->
+  @connections = []
+  @collections = {}
+  @documents   = {}
 
-Fixture = {}
-Fixture.connections = []
-Fixture.collections = {}
-Fixture.documents   = {}
-Fixture._fixtures   = []
-Fixture._location   = null
-Fixture._datacenter = []
+  @_fixtures   = []
+  @_datacenter = []
+  @_location   = null
+  @_superDirty = true
 
-Fixture._superDirty = true
+  @revert = new Revert(@collections, @documents)
+
+  @
 
 # Internal: Adds "wiretaps" to the connections to log modifications to the
 # database.
 #
 # collection - a connection's collection
-Fixture.wiretap = (collection) ->
+Quickfix::wiretap = (collection) ->
   return if collection.secureChannel?
 
   collection.unmodifiedMethods = {}
@@ -43,7 +46,7 @@ Fixture.wiretap = (collection) ->
 # Internal: load fixtures from file and into @collection
 #
 # force - force reloading
-Fixture.loadFixturesIntoMemory = (force = false) ->
+Quickfix::loadFixturesIntoMemory = (force = false) ->
   if force || Object.keys(@collections).length == 0
     @_superDirty = true
 
@@ -68,7 +71,7 @@ Fixture.loadFixturesIntoMemory = (force = false) ->
 #
 # absFixturePath -
 # extension      -
-Fixture.findFixtures = (absFixturePath, extension) ->
+Quickfix::findFixtures = (absFixturePath, extension) ->
   return @_fixtures if @_fixtures.length > 0
 
   @_location = absFixturePath
@@ -94,7 +97,7 @@ Fixture.findFixtures = (absFixturePath, extension) ->
 # Raises error if connection is bad
 #
 # Returns nothing
-Fixture.setupConnection = (connection, load = true) ->
+Quickfix::setupConnection = (connection, load = true) ->
   @connections.push
     connection:   connection
     loadFixtures: !!load
@@ -103,14 +106,14 @@ Fixture.setupConnection = (connection, load = true) ->
 
 
 # Public: resets connections
-Fixture.resetConnections = ->
+Quickfix::resetConnections = ->
   @connections = []
 
 
 # Internal: Yields when all @connections are ready
 #
 # Returns nothing
-Fixture.ensureConnectionsReady = (done) ->
+Quickfix::ensureConnectionsReady = (done) ->
   async.each @connections,
     (conn, next) ->
       if conn.connection.readyState == 1
@@ -124,7 +127,7 @@ Fixture.ensureConnectionsReady = (done) ->
     () ->
       done()
 
-Fixture.ensureCollectionsExistInConnection = (done) ->
+Quickfix::ensureCollectionsExistInConnection = (done) ->
   collectionNames = Object.keys(@collections)
 
   async.each @connections,
@@ -140,7 +143,7 @@ Fixture.ensureCollectionsExistInConnection = (done) ->
   ,
     done
 
-Fixture.insertAllDataIntoDatabase = (done) ->
+Quickfix::insertAllDataIntoDatabase = (done) ->
   collectionNames = Object.keys(@collections)
 
   async.each @connections,
@@ -162,7 +165,7 @@ Fixture.insertAllDataIntoDatabase = (done) ->
       done()
 
 
-Fixture.destroyAllDataFromDatabase = (done) ->
+Quickfix::destroyAllDataFromDatabase = (done) ->
   collectionNames = Object.keys(@collections)
   @_superDirty = true
 
@@ -180,7 +183,7 @@ Fixture.destroyAllDataFromDatabase = (done) ->
     done
 
 
-Fixture.commenceMassSurveillance = (done) ->
+Quickfix::commenceMassSurveillance = (done) ->
   async.each @connections, (conn, nextConn) =>
     async.each Object.keys(conn.connection.collections), (collectionName, nextCollection) =>
       @wiretap(conn.connection.collection(collectionName))
@@ -193,8 +196,8 @@ Fixture.commenceMassSurveillance = (done) ->
 
 # Public: Ensures all connections are ready. Ensures fixtures are read.
 # Ensures collections are created.
-Fixture.ready = (done) ->
-  # throw new Error('Fixture.setupConnection asdf') if @connections.length == 0
+Quickfix::ready = (done) ->
+  # throw new Error('Quickfix::setupConnection asdf') if @connections.length == 0
   async.series [
     (next) =>
       @ensureConnectionsReady(next)
@@ -209,115 +212,24 @@ Fixture.ready = (done) ->
   ],
     done
 
-Fixture.destroyDatacenter = (done) ->
+Quickfix::destroyDatacenter = (done) ->
   while (@_datacenter.length > 0)
     @_datacenter.pop()
   done()
 
 
-Fixture.unDirtyifyCollection = (collection, done) ->
-  docs = @collections[collection.name]
-
-  collection.secureChannel.remove {}, (err) ->
-    collection.secureChannel.insert docs, done
-
-
-Fixture.unremoveDocById = (findparam, collection, done) ->
-  id             = String(findparam._id)
-  collectionName = collection.name
-  doc            = @documents[collectionName][id]
-
-  collection.secureChannel.insert doc, done
-
-
-Fixture.restoreRemove = (dataitem, done) ->
-  collection = dataitem.collection
-  findparams = dataitem.args["0"]
-
-  reinserts = null
-
-  if findparams._id?
-    if findparams._id['$in']?
-      reinserts = findparams._id['$in']
-    else
-      reinserts = [findparams]
-
-    async.each reinserts, (findparam, next) =>
-      @unremoveDocById findparam, collection, next
-    ,
-      done
-  else
-    unDirtyifyCollection(collection, done)
-    
-Fixture.uninsertDoc = (findparam, collection, done) ->
-  collection.secureChannel.remove { _id: findparam._id }, done
-
-
-Fixture.restoreInsert = (dataitem, done) ->
-  collection = dataitem.collection
-  findparams = dataitem.args["0"]
-  @uninsertDoc(findparams, collection, done)
-
-
-Fixture.unupdateDocById = (findparam, collection, done) ->
-  id             = String(findparam._id)
-  collectionName = collection.name
-  doc            = @documents[collectionName][id]
-
-  collection.secureChannel.update { _id: findparam._id }, doc, done
-
-Fixture.restoreUpdate = (dataitem, done) ->
-  collection = dataitem.collection
-  findparams = dataitem.args["0"]
-
-  reinserts = null
-
-  if findparams._id?
-    if findparams._id['$in']?
-      reinserts = findparams._id['$in']
-    else
-      reinserts = [findparams]
-
-    async.each reinserts, (findparam, next) =>
-      @unupdateDocById findparam, collection, next
-    ,
-      done
-  else
-    unDirtyifyCollection(collection, done)
-
-Fixture.restoreFindAndModify = (dataitem, done) ->
-  collection = dataitem.collection
-  findparams = dataitem.args["0"]
-  remove     = dataitem.args["3"].remove
-
-  if remove
-    @unremoveDocById(findparams, collection, done)
-  else
-    @unupdateDocById(findparams, collection, done)
-
-
-
-
-Fixture.selectivelyRestoreDatabase = (done) ->
+Quickfix::selectivelyRestoreDatabase = (done) ->
   async.whilst () => @_datacenter.length > 0
     ,
     (next) =>
       dataitem = @_datacenter.pop()
 
-      switch dataitem.method
-        when "insert"
-          return @restoreInsert(dataitem, next)
-        when "update"
-          return @restoreUpdate(dataitem, next)
-        when "remove"
-          return @restoreRemove(dataitem, next)
-        when "findAndModify"
-          return @restoreFindAndModify(dataitem, next)
+      @revert.handle(dataitem.method, dataitem, next)
     ,
       done
 
 
-Fixture.populate = (done) ->
+Quickfix::populate = (done) ->
   if @_superDirty
     async.series [
       (next) =>
@@ -338,15 +250,15 @@ Fixture.populate = (done) ->
     done()
 
 
-# Deprecated: Use Fixture.ready
-Fixture.initModels = (done) ->
-  # console.warn "DEPRECATED: Use `Fixture.ready`"
+# Deprecated: Use Quickfix::ready
+Quickfix::initModels = (done) ->
+  # console.warn "DEPRECATED: Use `Quickfix::ready`"
   @ready(done)
 
 
 # Deprecated: Specifies the models and fixtures to use and load.
-Fixture.use = (ignore) ->
+Quickfix::use = (ignore) ->
   # console.warn "DEPRECATED: This method doesn't do anything anymore"
   # do nothing
 
-module.exports = Fixture
+module.exports = new Quickfix
