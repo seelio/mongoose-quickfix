@@ -174,7 +174,15 @@ Quickfix::destroyAllDataFromDatabase = (done) ->
           collection = conn.connection.collection(collectionName)
 
           collection.secureChannel.remove {}, { safe: true }, (err, docs) =>
-            nextCollection(err)
+            if err?.code == 10101
+              collection.drop (err) ->
+                if err?.message == 'ns not found'
+                  # silently fail
+                  nextCollection()
+                else
+                  nextCollection(err)
+            else
+              nextCollection(err)
       ,
         nextConn
   ,
