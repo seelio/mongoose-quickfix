@@ -17,7 +17,10 @@ Revert::restoreCollection = (collection, done) ->
 Revert::unremoveDocById = (id, collection, done) ->
   doc            = @documents[collection.name][String(id)]
 
-  collection.secureChannel.insert doc, done
+  if doc
+    collection.secureChannel.insert doc, done
+  else
+    done()
 
     
 Revert::uninsertDocById = (id, collection, done) ->
@@ -27,7 +30,10 @@ Revert::uninsertDocById = (id, collection, done) ->
 Revert::unupdateDocById = (id, collection, done) ->
   doc            = @documents[collection.name][String(id)]
 
-  collection.secureChannel.update { _id: id }, doc, done
+  if doc
+    collection.secureChannel.update { _id: id }, doc, done
+  else
+    done()
 
 
 Revert::insert = (id, collection, opts, done) ->
