@@ -11,7 +11,10 @@ Revert::restoreCollection = (collection, done) ->
   docs = @collections[collection.name]
 
   collection.secureChannel.remove {}, (err) ->
-    collection.secureChannel.insert docs, done
+    if docs
+      collection.secureChannel.insert docs, done
+    else
+      done()
 
 
 Revert::unremoveDocById = (id, collection, done) ->
