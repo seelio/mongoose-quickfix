@@ -1,5 +1,6 @@
 async = require 'async'
 fs = require 'fs'
+path = require 'path'
 util = require './util'
 Revert = require "./revert"
 
@@ -73,6 +74,10 @@ Quickfix::loadFixturesIntoMemory = (force = false) ->
 # extension      -
 Quickfix::findFixtures = (absFixturePath, extension) ->
   return @_fixtures if @_fixtures.length > 0
+
+  absFixturePath = path.normalize(absFixturePath)
+
+  console.log "Quickfix - Searching for fixtures in #{absFixturePath}"
 
   @_location = absFixturePath
 
