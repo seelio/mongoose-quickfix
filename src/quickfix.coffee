@@ -207,7 +207,7 @@ Quickfix::commenceMassSurveillance = (done) ->
 
 # Public: Ensures all connections are ready. Ensures fixtures are read.
 # Ensures collections are created.
-Quickfix::ready = (done) ->
+Quickfix::initialize = (done) ->
   # throw new Error('Quickfix::setupConnection asdf') if @connections.length == 0
   async.series [
     (next) =>
@@ -261,10 +261,19 @@ Quickfix::populate = (done) ->
     done()
 
 
-# Deprecated: Use Quickfix::ready
+Quickfix::terminate = (done) ->
+  done()
+
+
+# Deprecated: Use Quickfix::initialize
 Quickfix::initModels = (done) ->
-  # console.warn "DEPRECATED: Use `Quickfix::ready`"
-  @ready(done)
+  # console.warn "DEPRECATED: Use `Quickfix::initialize`"
+  @initialize(done)
+
+
+# Deprecated: Use Quickfix::terminate. This function does nothing
+Quickfix::tearDown = (done) ->
+  done()
 
 
 # Deprecated: Specifies the models and fixtures to use and load.
