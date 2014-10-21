@@ -276,9 +276,9 @@ Quickfix::tearDown = (done) ->
   done()
 
 
-# Deprecated: Specifies the models and fixtures to use and load.
+# Deprecated: Specifies the models and fixtures to use and load. This function
+# does nothing.
 Quickfix::use = (ignore) ->
   # console.warn "DEPRECATED: This method doesn't do anything anymore"
-  # do nothing
 
 module.exports = new Quickfix
