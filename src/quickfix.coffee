@@ -194,6 +194,12 @@ Quickfix::destroyAllDataFromDatabase = (done) ->
     done
 
 
+# Public: Wiretaps every known collection, even if it doesn't have a fixture.
+#
+# done - Callback to call when finished
+#
+# Yields nothing
+# Returns nothing
 Quickfix::commenceMassSurveillance = (done) ->
   async.each @connections, (conn, nextConn) =>
     async.each Object.keys(conn.connection.collections), (collectionName, nextCollection) =>
